@@ -2,6 +2,7 @@ PYTHON := python
 APT_INSTALL := sudo apt install -y
 SQLITE := sqlite3
 
+
 clean:
 	rm -rf venv
 	echo "Virtual environment removed."
@@ -17,6 +18,12 @@ venv:
         . venv/bin/activate && pip -V; \
 		$(PYTHON) -m pip install -r requirements-dev.txt; \
     fi
+
+lint: venv
+	. venv/bin/activate; \
+	isort --profile black .; \
+	black .; \
+	mdformat .; \
 
 setup-server:
 	$(APT_INSTALL) sqlite3
