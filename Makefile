@@ -36,7 +36,7 @@ lint: venv
 setup-server:
 	$(APT_INSTALL) sqlite3; \
 	$(PYTHON) -m pip install -r requirements-server.txt; \
-	$(PYTHON) pi_weather/app/init_db.py; \
+	$(PYTHON) pi_weather/app/db_utils.py; \
 
 run-server: setup-server
 	$(PYTHON) pi_weather/app/app.py; \
@@ -45,7 +45,11 @@ docker-build:
 	docker build -t pi-weather .; \
 
 docker-run: docker-build
-	docker run -p 5000:5000 pi-weather; \
+	docker run --rm -p 5000:5000 pi-weather; \
+
+test: docker-build venv
+	. venv/bin/activate; \
+	pytest; \
 
 setup-sensor:
 	$(PYTHON) -m pip install -r requirements-sensor.txt; \

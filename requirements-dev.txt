@@ -1,3 +1,5 @@
 isort
 black
 mdformat
+pytest
+requests
