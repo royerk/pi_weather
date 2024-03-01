@@ -12,4 +12,6 @@ todo: use make to `scp` + load env vars for credentials
 
 ## Local Development
 
+* Raspbian has `python3.9`, docker images use `python3.10`
+
 todo: docker/make local server + tests
