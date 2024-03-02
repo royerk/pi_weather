@@ -4,11 +4,11 @@ This is a simple weather station that uses a Raspberry Pi and a BME280 sensor to
 
 ## Installation - Server
 
-* `make safe-delete-server-remote`: copy `data.db` then delete all code and data
-* `make deploy-remote`: move code to server
-* `make setup-server-remote`: install dependencies, setup db
-* `make run-server-remote`: start server
-* (`make stop-server-remote`: stop server)
+- `make safe-delete-server-remote`: copy `data.db` then delete all code and data
+- `make deploy-remote`: move code to server
+- `make setup-server-remote`: install dependencies, setup db
+- `make run-server-remote`: start server
+- (`make stop-server-remote`: stop server)
 
 TODO: start server on boot
 
@@ -36,7 +36,6 @@ curl -X POST -H "Content-Type: application/json" -d '{
 ```bash
 curl "http://172.17.0.2:5000/v1/data_point/last_day?device_name=your_device_name"
 ```
-
 
 ## BMP280-3.3
 
