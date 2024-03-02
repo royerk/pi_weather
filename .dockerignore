@@ -1,0 +1,8 @@
+test_*
+*__pycache__*
+venv
+README.md
+CODEOWNERS
+LICENSE
+requirements-dev.txt
+requirements-sensor.txt
