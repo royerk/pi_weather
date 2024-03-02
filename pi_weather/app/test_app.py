@@ -1,6 +1,6 @@
 import subprocess
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
 
 import pytest
 import requests
@@ -11,7 +11,9 @@ from pi_weather.app.db_utils import datetime_to_string
 @pytest.fixture(scope="module")
 def test_container():
     container_id = (
-        subprocess.check_output(["docker", "run", "--rm", "-d", "-p", "5000:5000", "pi-weather"])
+        subprocess.check_output(
+            ["docker", "run", "--rm", "-d", "-p", "5000:5000", "pi-weather"]
+        )
         .decode()
         .strip()
     )

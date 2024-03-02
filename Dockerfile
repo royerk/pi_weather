@@ -9,6 +9,6 @@ COPY . /pi_weather
 
 WORKDIR /pi_weather
 
-RUN make setup-server
+RUN make setup-server-local
 
-CMD ["make", "run-server"]
+CMD ["make", "run-server-local"]
