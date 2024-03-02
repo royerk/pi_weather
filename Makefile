@@ -58,23 +58,25 @@ safe-delete-server-remote:
 		cp $(REMOTE_PATH)/pi-weather/data.db $(REMOTE_PATH)/data_$$TIMESTAMP.db; \
 		rm -rf $(REMOTE_PATH)/pi-weather'
 
+make-tar:
+	git ls-files -z | tar -czf code.tar.gz --null -T -
 
-deploy-remote: safe-delete-server-remote
-	git ls-files -z | tar -czf code.tar.gz --null -T -; \
+remove-tar:
+	rm code.tar.gz
+
+deploy-server-remote: make-tar
     scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH); \
-	rm code.tar.gz; \
+	remove-tar; \
     ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"mkdir -p $(REMOTE_PATH)/pi-weather; tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz"; \
+		"mkdir -p $(REMOTE_PATH)/pi-weather; \
+		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz"; \
 
 setup-server-remote:
 	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"sudo apt update; sudo apt install -y python3-pip python3-venv sqlite3"; \
-	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"python3 -m venv $(REMOTE_PATH)/pi-weather/venv"; \
-	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"source $(REMOTE_PATH)/pi-weather/venv/bin/activate && pip install -r $(REMOTE_PATH)/pi-weather/requirements-server.txt"; \
-	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"cd $(REMOTE_PATH)/pi-weather; python3 pi_weather/app/db_utils.py"; \
+		"sudo apt update; sudo apt install -y python3-pip python3-venv sqlite3; \
+		cd $(REMOTE_PATH)/pi-weather; \
+		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-server.txt; \
+		python3 pi_weather/app/db_utils.py"
 
 run-server-remote:
 	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
@@ -84,4 +86,13 @@ stop-server-remote:
 	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
 		"pkill -f 'python3 pi_weather/app/app.py'"
 
-
+deploy-sensor-1: make-tar
+	scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1):$(REMOTE_PATH); \
+	ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1) \
+		"mkdir -p $(REMOTE_PATH)/pi-weather; \
+		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz; \
+		cd $(REMOTE_PATH)/pi-weather; \
+		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-sensor.txt; \
+		git clone https://github.com/pimoroni/bmp280-python; sudo bmp280-python/install.sh;"; \
+	remove-tar; \
+	# TODO add cron job to run sensor
