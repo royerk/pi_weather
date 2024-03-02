@@ -53,11 +53,11 @@ test: docker-build venv
 	pytest; \
 
 safe-delete-server-remote:
-    TIMESTAMP := $$(date +%Y%m%d_%H%M%S); \
-    ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"cp $(REMOTE_PATH)/pi-weather/data.db $(REMOTE_PATH)/data_$(TIMESTAMP).db"; \
-    ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"rm -rf $(REMOTE_PATH)/pi-weather"; \
+	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
+		'TIMESTAMP=$$(date "+%Y%m%d_%H%M%S"); \
+		cp $(REMOTE_PATH)/pi-weather/data.db $(REMOTE_PATH)/data_$$TIMESTAMP.db; \
+		rm -rf $(REMOTE_PATH)/pi-weather'
+
 
 deploy-remote: safe-delete-server-remote
 	git ls-files -z | tar -czf code.tar.gz --null -T -; \
