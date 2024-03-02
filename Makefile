@@ -88,11 +88,17 @@ stop-server-remote:
 
 deploy-sensor-1: make-tar
 	scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1):$(REMOTE_PATH); \
+	CRONJOB := "*/5 * * * * $(REMOTE_PATH)/pi-weather/venv/bin/python3 $(REMOTE_PATH)/pi-weather/sensor/sensor.py"; \
 	ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1) \
 		"mkdir -p $(REMOTE_PATH)/pi-weather; \
 		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz; \
 		cd $(REMOTE_PATH)/pi-weather; \
 		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-sensor.txt; \
-		git clone https://github.com/pimoroni/bmp280-python; sudo bmp280-python/install.sh;"; \
+		git clone https://github.com/pimoroni/bmp280-python; sudo bmp280-python/install.sh;
+		crontab -l | { cat; echo \"$${CRONJOB}\"; } | crontab -"; \
 	remove-tar; \
-	# TODO add cron job to run sensor
+	
+# remove-cronjob:
+#     @ssh user@hostname "crontab -l | grep -v '/path/to/your/command' | crontab -"; \
+#     echo "Cronjob removed successfully."
+# TODO clean up sensor
