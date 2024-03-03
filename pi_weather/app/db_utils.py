@@ -12,6 +12,7 @@ DB_FILE = os.path.join(REMOTE_PATH, "weather_data.db")
 if os.environ.get("IS_DOCKER"):
     DB_FILE = "weather_data.db"
 
+
 def datetime_to_string(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -36,6 +37,8 @@ def initialize_database():
                 conn.commit()
         except sqlite3.OperationalError as e:
             print(f"Error: {e}, {DB_FILE=}")
+    else:
+        print(f"Database already exists: {DB_FILE}")
 
 
 if __name__ == "__main__":

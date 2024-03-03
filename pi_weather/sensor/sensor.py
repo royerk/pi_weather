@@ -28,6 +28,7 @@ MISSED_LOGS_DIR = os.path.join(REMOTE_PATH, "missed_logs")
 
 bus = SMBus(1)
 bmp280 = BMP280(i2c_dev=bus)
+bmp280.setup(mode="forced")
 
 temperature = bmp280.get_temperature()
 pressure = bmp280.get_pressure()

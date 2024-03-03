@@ -104,7 +104,8 @@ deploy-server-remote:
 
 	@echo "Deploying code on remote server..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"mkdir -p $(REMOTE_PATH)/pi-weather; \
+		"rm -rf $(REMOTE_PATH)/pi-weather; \
+		mkdir -p $(REMOTE_PATH)/pi-weather; \
 		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz"
 	@echo "Code deployed successfully."
 	@touch .last_deploy_server
@@ -114,7 +115,7 @@ deploy: make-tar deploy-server-remote remove-tar
 setup-server-remote:
 	@echo "Setting up server on remote..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"sudo apt update; sudo apt install -y python3-pip python3-venv sqlite3; \
+		"sudo apt update; sudo apt install -y python3-pip python3-venv sqlite3 libopenblas-base; \
 		cd $(REMOTE_PATH)/pi-weather; \
 		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-server.txt; \
 		python3 pi_weather/app/db_utils.py"
@@ -132,8 +133,24 @@ run-server-remote:
 	@echo "Cronjob added."
 
 stop-server-remote:
-	ssh $(REMOTE_USER)@$(REMOTE_HOST) \
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
 		"pkill -f 'python3 pi_weather/app/app.py'"
+	@echo "Server stopped on remote."
+
+remove-server-remote: stop-server-remote
+	@echo "Removing server from remote..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
+		"rm -rf $(REMOTE_PATH)/pi-weather"
+	@echo "Server removed from remote."
+
+	@echo "Removing cronjob to start server on boot..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
+		"crontab -l | grep -v 'pi_weather/app' | crontab -"
+	@echo "Cronjob removed."
+
+update-server-remote: remove-server-remote deploy setup-server-remote run-server-remote
+	@echo "Server updated on remote."
+
 
 .PHONY: deploy-s2
 deploy-s2:
@@ -159,10 +176,13 @@ deploy-sensor-2: make-tar deploy-s2 remove-tar
 clean-sensor-2:
 	@echo "Removing cronjobs..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_2) \
-		"crontab -l | grep -v '*pi_weather*' | crontab -"
+		"crontab -l | grep -v 'pi_weather/sensor' | crontab -"
 	@echo "Cronjobs removed successfully."
 
 	@echo "Removing code..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_2) \
 		"rm -rf $(REMOTE_PATH)/pi-weather"
 	@echo "Code removed successfully."
+
+update-sensor-2: clean-sensor-2 deploy-sensor-2
+	@echo "Sensor 2 updated on remote."

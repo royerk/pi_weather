@@ -3,10 +3,11 @@
 This is a simple weather station that uses a Raspberry Pi and a BMP280 sensor to measure temperature, ~~humidity~~, and pressure. The data is then sent to a web server.
 
 To do:
-* headless setup
-* retry
-* e-ink display
-* sample data
+
+- headless setup
+- retry
+- e-ink display
+- sample data
 
 ## Installation - Server
 
