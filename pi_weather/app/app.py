@@ -24,7 +24,7 @@ def add_data_point():
     pressure = data.get("pressure")
     date = data.get("date")
 
-    if not all([device_name, temperature, humidity, pressure, date]):
+    if None in [device_name, temperature, humidity, pressure, date]:
         return jsonify({"message": "Missing data"}), 400
 
     try:

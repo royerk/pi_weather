@@ -1,7 +1,13 @@
 import os
 import sqlite3
 
-DB_FILE = "data.db"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+REMOTE_PATH = os.getenv("REMOTE_PATH")
+
+DB_FILE = os.path.join(REMOTE_PATH, "weather_data.db")
 
 
 def datetime_to_string(dt):

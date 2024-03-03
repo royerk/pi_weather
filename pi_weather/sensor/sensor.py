@@ -22,8 +22,9 @@ def create_if_not_exists(directory: str) -> None:
 
 
 REMOTE_HOST = os.getenv("REMOTE_HOST")
+REMOTE_PATH = os.getenv("REMOTE_PATH")
 SERVER_URL = f"http://{REMOTE_HOST}:5000"
-MISSED_LOGS_DIR = "missed_logs"
+MISSED_LOGS_DIR = os.path.join(REMOTE_PATH, "missed_logs")
 
 bus = SMBus(1)
 bmp280 = BMP280(i2c_dev=bus)
