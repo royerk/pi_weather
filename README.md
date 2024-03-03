@@ -12,9 +12,9 @@ This is a simple weather station that uses a Raspberry Pi and a BMP280 sensor to
 
 ## Installation - Sensor
 
-* BMP280-3.3
-* `make deploy-sensor-2`
-* `make clean-sensor-2`
+- BMP280-3.3
+- `make deploy-sensor-2`
+- `make clean-sensor-2`
 
 ## Local Development
 
