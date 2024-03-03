@@ -44,10 +44,26 @@ run-server-local: setup-server-local
 	$(PYTHON) pi_weather/app/app.py; \
 
 docker-build:
-	docker build -t pi-weather .; \
+	@echo "Building docker image..."
+	@docker build -t pi-weather .
+	@echo "Docker image built successfully."
 
-docker-run: docker-build
-	docker run --rm -p 5000:5000 --name test-pi-weather pi-weather; \
+local-data:
+	@bash scripts/generate_local_fake_data.sh
+
+docker-launch: docker-build
+	@echo "Running docker container..."
+	@docker run --rm -d -p 5000:5000 --name test-pi-weather pi-weather
+	@sleep 4
+
+docker-attach:
+	@docker exec -it test-pi-weather /bin/bash
+
+docker-kill:
+	@echo "Stopping docker container..."
+	@docker kill test-pi-weather
+
+docker-run: docker-build docker-launch local-data
 
 test: docker-build venv
 	. venv/bin/activate; \
