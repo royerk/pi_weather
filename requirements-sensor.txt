@@ -1,0 +1,3 @@
+bmp280
+python-dotenv
+requests
