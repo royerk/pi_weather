@@ -104,7 +104,10 @@ deploy-server-remote:
 
 	@echo "Deploying code on remote server..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"rm -rf $(REMOTE_PATH)/pi-weather; \
+		"rm -rf $(REMOTE_PATH)/pi-weather/pi_weather/app; \
+		rm -rf $(REMOTE_PATH)/pi-weather/venv; \
+		rm ${REMOTE_PATH}/pi-weather/requirements-server.txt; \
+		\
 		mkdir -p $(REMOTE_PATH)/pi-weather; \
 		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz"
 	@echo "Code deployed successfully."
@@ -187,23 +190,32 @@ deploy-sensor-2: clean-sensor-2 make-tar deploy-s2 remove-tar
 update-sensor-2: clean-sensor-2 deploy-sensor-2
 	@echo "Sensor 2 updated on remote."
 
+remove-e-ink:
+	@echo "Removing e-ink from remote..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_E_INK) \
+		"rm -rf $(REMOTE_PATH)/pi-weather/pi_weather/e_ink; \
+		rm -rf $(REMOTE_PATH)/pi-weather/venv-ink; \
+		rm ${REMOTE_PATH}/pi-weather/requirements-ink.txt; \
+		crontab -l | grep -v 'pi_weather.e_ink' | crontab -;"
+	@echo "E-ink removed from remote: code, venv and cronjob."
+
 deploy-e-ink:
 	@echo "Deploying code tarball to remote e-ink..."
 	@scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST_E_INK):$(REMOTE_PATH)
-	@echo "Code tarball copied to remote e-ink."
+	@echo "Code tarball copied to remote e-ink host."
 
 	@echo "Deploying code on remote e-ink..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST_E_INK) \
-		"rm -rf $(REMOTE_PATH)/pi-weather; \
-		mkdir -p $(REMOTE_PATH)/pi-weather; \
+		"mkdir -p $(REMOTE_PATH)/pi-weather; \
 		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz; \
 		\
 		cd $(REMOTE_PATH)/pi-weather; \
 		python3 -m venv venv-ink; source venv-ink/bin/activate && pip install -r requirements-ink.txt; \
 		\
-		crontab -l | { cat; echo \"2-59/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python3 pi_weather/e_ink/display.py\"; } | crontab -"
+		cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python3 -m pi_weather.e_ink.display; \
+		crontab -l | { cat; echo \"2-59/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python -m pi_weather.e_ink.display\"; } | crontab -"
 	@echo "Code deployed to remote e-ink successfully."
 
 	@touch .last_deploy_e_ink
 
-update-e-ink: make-tar deploy-e-ink remove-tar
+update-e-ink: make-tar remove-e-ink deploy-e-ink remove-tar

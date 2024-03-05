@@ -1,13 +1,16 @@
-from pi_weather.e_ink.epd2in13_V4 import epd2in13_V4
-from pi_weather.app.db_utils import DB_FILE
-from PIL import Image,ImageDraw,ImageFont
-import time
-import sqlite3
 import os
+import sqlite3
+import time
+from datetime import datetime
 
-font24 = ImageFont.truetype(os.path.join('Font.ttc'), 24)
+from PIL import Image, ImageDraw, ImageFont
 
-epd = epd2in13_V4.EPD()
+from pi_weather.app.db_utils import DB_FILE
+from pi_weather.e_ink.epd2in13_V4 import EPD
+
+font20 = ImageFont.truetype(os.path.join(os.path.dirname(__file__), "Font.ttc"), 20)
+
+epd = EPD()
 epd.init()
 epd.Clear(0xFF)
 time.sleep(2)
@@ -36,6 +39,7 @@ if len(rows) == 0:
     exit()
 
 data = {}
+max_date = None
 for row in rows:
     device_name = row[0]
     if device_name not in data:
@@ -43,15 +47,33 @@ for row in rows:
     data[device_name]["temperature"] = row[1]
     data[device_name]["humidity"] = row[2]
     data[device_name]["pressure"] = row[3]
-    data[device_name]["date"] = row[4]
+    data[device_name]["date"] = datetime.strptime(row[4], "%Y-%m-%d %H:%M:%S")
+    max_date = (
+        max(max_date, data[device_name]["date"])
+        if max_date
+        else data[device_name]["date"]
+    )
 
-image = Image.new('1', (epd.height, epd.width), 255)
+image = Image.new("1", (epd.height, epd.width), 255)
 draw = ImageDraw.Draw(image)
 x = 5
 y = 5
-y_delta = 30
+y_delta = 25
+
+delta_seconds = (datetime.now() - max_date).total_seconds()
+delta_minutes = int(delta_seconds / 60)
+draw.text(
+    (x, y),
+    f"{max_date.strftime('%b %d, %H:%M')}, {delta_minutes}m ago",
+    font=font20,
+    fill=0,
+)
+y += y_delta
+
 for i, device_name in enumerate(data):
-    text = f"{device_name}: {data[device_name]['temperature']:.1f} C, {data[device_name]['pressure']:.1f} hPa, {data[device_name]['date']}"
-    draw.text((x, y + i * y_delta), text, font=font24, fill=0)
+    text = f"{device_name}: {data[device_name]['temperature']:.1f} C"
+    if data[device_name]["date"] != max_date:
+        text = f"{device_name}: Ø"
+    draw.text((x, y + i * y_delta), text, font=font20, fill=0)
 epd.display(epd.getbuffer(image))
 epd.sleep()
