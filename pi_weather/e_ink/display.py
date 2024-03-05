@@ -73,8 +73,8 @@ draw.text(
 y += y_delta
 
 for i, device_name in enumerate(data):
-    device_name = aliases.get(device_name, device_name)
-    text = f"{device_name}: {data[device_name]['temperature']:.1f} C"
+    device_alias = aliases.get(device_name, device_name)
+    text = f"{device_alias}: {data[device_name]['temperature']:.1f} C"
     if data[device_name]["date"] != max_date:
         text = f"{device_name}: Ø"
     draw.text((x, y + i * y_delta), text, font=font20, fill=0)

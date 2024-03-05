@@ -117,8 +117,9 @@ run-server-remote:
 	@echo "Cronjob added."
 
 stop-server-remote:
+	@echo "Stopping server on remote..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"pkill -f 'python3 pi_weather/app/app.py'"
+		"pkill -f 'venv-server/bin/python -m pi_weather.app.app'"
 	@echo "Server stopped on remote."
 
 remove-server-remote: stop-server-remote
