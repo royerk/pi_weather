@@ -5,7 +5,7 @@ from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
 
-from pi_weather.app.db_utils import DB_FILE
+from pi_weather.app.db_utils import DB_FILE, get_alias
 from pi_weather.e_ink.epd2in13_V4 import EPD
 
 font20 = ImageFont.truetype(os.path.join(os.path.dirname(__file__), "Font.ttc"), 20)
@@ -37,6 +37,8 @@ with sqlite3.connect(DB_FILE) as conn:
 if len(rows) == 0:
     epd.sleep()
     exit()
+
+aliases = get_alias()
 
 data = {}
 max_date = None
@@ -71,7 +73,8 @@ draw.text(
 y += y_delta
 
 for i, device_name in enumerate(data):
-    text = f"{device_name}: {data[device_name]['temperature']:.1f} C"
+    device_alias = aliases.get(device_name, device_name)
+    text = f"{device_alias}: {data[device_name]['temperature']:.1f} C"
     if data[device_name]["date"] != max_date:
         text = f"{device_name}: Ø"
     draw.text((x, y + i * y_delta), text, font=font20, fill=0)

@@ -38,10 +38,10 @@ lint: venv
 setup-server-local:
 	$(APT_INSTALL) sqlite3; \
 	$(PYTHON) -m pip install -r requirements-server.txt; \
-	$(PYTHON) pi_weather/app/db_utils.py; \
+	$(PYTHON) -m pi_weather.app.db_utils; \
 
 run-server-local: setup-server-local
-	$(PYTHON) pi_weather/app/app.py; \
+	$(PYTHON) -m pi_weather.app.app; \
 
 docker-build:
 	@echo "Building docker image..."
@@ -69,25 +69,6 @@ test: docker-build venv
 	. venv/bin/activate; \
 	pytest; \
 
-safe-delete-server-remote:
-	@echo "Backing up database ($(REMOTE_PATH)/weather_data.db)..."
-	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		'if [ -f $(REMOTE_PATH)/weather_data.db ]; then \
-			TIMESTAMP=$(date "+%Y%m%d_%H%M%S"); \
-			cp $(REMOTE_PATH)/weather_data.db $(REMOTE_PATH)/weather_data_$${TIMESTAMP}.db; \
-		fi'
-	@echo "Database backed up successfully (if there was one)."
-
-	@echo "Removing code..."
-	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"rm -rf $(REMOTE_PATH)/pi-weather"
-	@echo "Code removed successfully."
-
-	@echo "Removing cronjobs..."
-	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"crontab -l | grep -v '*pi_weather/app*' | crontab -"
-	@echo "Cronjobs removed successfully."
-
 make-tar:
 	@git ls-files -z | tar -czf code.tar.gz --null -T -
 	@echo "Code tarball created."
@@ -105,7 +86,7 @@ deploy-server-remote:
 	@echo "Deploying code on remote server..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
 		"rm -rf $(REMOTE_PATH)/pi-weather/pi_weather/app; \
-		rm -rf $(REMOTE_PATH)/pi-weather/venv; \
+		rm -rf $(REMOTE_PATH)/pi-weather/venv-server; \
 		rm ${REMOTE_PATH}/pi-weather/requirements-server.txt; \
 		\
 		mkdir -p $(REMOTE_PATH)/pi-weather; \
@@ -120,40 +101,78 @@ setup-server-remote:
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
 		"sudo apt update; sudo apt install -y python3-pip python3-venv sqlite3 libopenblas-base; \
 		cd $(REMOTE_PATH)/pi-weather; \
-		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-server.txt; \
-		python3 pi_weather/app/db_utils.py"
+		python -m venv venv-server; source venv-server/bin/activate && pip install -r requirements-server.txt; \
+		python -m pi_weather.app.db_utils"
 	@echo "Server setup on remote completed."
 
 run-server-remote:
 	@echo "Starting server on remote..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"cd $(REMOTE_PATH)/pi-weather; nohup venv/bin/python3 pi_weather/app/app.py  >/dev/null 2>/dev/null </dev/null  &"
+		"cd $(REMOTE_PATH)/pi-weather; nohup venv-server/bin/python -m pi_weather.app.app  >/dev/null 2>/dev/null </dev/null  &"
 	@echo "Server started on remote."
 
 	@echo "Adding cronjob to start server on boot..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"(crontab -l 2>/dev/null; echo '@reboot cd $(REMOTE_PATH)/pi-weather && venv/bin/python3 pi_weather/app/app.py') | crontab -"
+		"(crontab -l 2>/dev/null; echo '@reboot cd $(REMOTE_PATH)/pi-weather && venv-server/bin/python -m pi_weather.app.app') | crontab -"
 	@echo "Cronjob added."
 
 stop-server-remote:
+	@echo "Stopping server on remote..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"pkill -f 'python3 pi_weather/app/app.py'"
+		"pkill -f 'venv-server/bin/python -m pi_weather.app.app'"
 	@echo "Server stopped on remote."
 
 remove-server-remote: stop-server-remote
 	@echo "Removing server from remote..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"rm -rf $(REMOTE_PATH)/pi-weather"
+		"rm -rf $(REMOTE_PATH)/pi-weather/pi_weather/app; \
+		rm -rf $(REMOTE_PATH)/pi-weather/venv-server; \
+		rm ${REMOTE_PATH}/pi-weather/requirements-server.txt; \"
 	@echo "Server removed from remote."
 
 	@echo "Removing cronjob to start server on boot..."
 	@ssh $(REMOTE_USER)@$(REMOTE_HOST) \
-		"crontab -l | grep -v 'pi_weather/app' | crontab -"
+		"crontab -l | grep -v 'pi_weather.app' | crontab -"
 	@echo "Cronjob removed."
 
 update-server-remote: remove-server-remote deploy setup-server-remote run-server-remote
 	@echo "Server updated on remote."
 
+
+.PHONY: deploy-s1
+deploy-s1:
+	@echo "Deploying code tarball to remote sensor 1..."
+	@scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1):$(REMOTE_PATH)
+	@echo "Code tarball copied to remote sensor."
+
+	@echo "Deploying code on remote sensor 1..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1) \
+		"mkdir -p $(REMOTE_PATH)/pi-weather; \
+		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz; \
+		\
+		cd $(REMOTE_PATH)/pi-weather; \
+		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-sensor.txt; \
+		\
+		crontab -l | { cat; echo \"*/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv/bin/python3 pi_weather/sensor/sensor.py\"; } | crontab -"
+	@echo "Code deployed to remote sensor successfully."
+
+	@touch .last_deploy_sensor_1
+
+clean-sensor-1:
+	@echo "Removing cronjobs..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1) \
+		"crontab -l | grep -v 'pi_weather/sensor' | crontab -"
+	@echo "Cronjobs removed successfully."
+
+	@echo "Removing code..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_1) \
+		"rm -rf $(REMOTE_PATH)/pi-weather"
+	@echo "Code removed successfully."
+
+deploy-sensor-1: clean-sensor-1 make-tar deploy-s1 remove-tar
+
+update-sensor-1: clean-sensor-1 deploy-sensor-1
+	@echo "Sensor 1 updated on remote."
 
 .PHONY: deploy-s2
 deploy-s2:
@@ -189,6 +208,41 @@ deploy-sensor-2: clean-sensor-2 make-tar deploy-s2 remove-tar
 
 update-sensor-2: clean-sensor-2 deploy-sensor-2
 	@echo "Sensor 2 updated on remote."
+
+.PHONY: deploy-s3
+deploy-s3:
+	@echo "Deploying code tarball to remote sensor 3..."
+	@scp code.tar.gz $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_3):$(REMOTE_PATH)
+	@echo "Code tarball copied to remote sensor."
+
+	@echo "Deploying code on remote sensor 3..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_3) \
+		"mkdir -p $(REMOTE_PATH)/pi-weather; \
+		tar -xzf $(REMOTE_PATH)/code.tar.gz -C $(REMOTE_PATH)/pi-weather && rm $(REMOTE_PATH)/code.tar.gz; \
+		\
+		cd $(REMOTE_PATH)/pi-weather; \
+		python3 -m venv venv; source venv/bin/activate && pip install -r requirements-sensor.txt; \
+		\
+		crontab -l | { cat; echo \"*/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv/bin/python3 pi_weather/sensor/sensor.py\"; } | crontab -"
+	@echo "Code deployed to remote sensor successfully."
+
+	@touch .last_deploy_sensor_3
+
+clean-sensor-3:
+	@echo "Removing cronjobs..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_3) \
+		"crontab -l | grep -v 'pi_weather/sensor' | crontab -"
+	@echo "Cronjobs removed successfully."
+
+	@echo "Removing code..."
+	@ssh $(REMOTE_USER)@$(REMOTE_HOST_SENSOR_3) \
+		"rm -rf $(REMOTE_PATH)/pi-weather"
+	@echo "Code removed successfully."
+
+deploy-sensor-3: clean-sensor-3 make-tar deploy-s3 remove-tar
+
+update-sensor-3: clean-sensor-3 deploy-sensor-3
+	@echo "Sensor 3 updated on remote."
 
 remove-e-ink:
 	@echo "Removing e-ink from remote..."
