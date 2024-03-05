@@ -1,0 +1,5 @@
+RPi.GPIO
+spidev
+gpiozero
+python-dotenv
+Pillow

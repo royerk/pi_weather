@@ -4,10 +4,9 @@ This is a simple weather station that uses a Raspberry Pi and a BMP280 sensor to
 
 To do:
 
-- headless setup
-- retry
+- sensor retry
 - e-ink display
-- sample data
+- sample data, avoid artifacts
 
 ## Installation - Server
 
