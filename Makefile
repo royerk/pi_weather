@@ -38,10 +38,10 @@ lint: venv
 setup-server-local:
 	$(APT_INSTALL) sqlite3; \
 	$(PYTHON) -m pip install -r requirements-server.txt; \
-	$(PYTHON) pi_weather/app/db_utils.py; \
+	$(PYTHON) -m pi_weather.app.db_utils; \
 
 run-server-local: setup-server-local
-	$(PYTHON) pi_weather/app/app.py; \
+	$(PYTHON) -m pi_weather.app.app; \
 
 docker-build:
 	@echo "Building docker image..."

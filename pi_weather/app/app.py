@@ -36,12 +36,18 @@ def process_alias():
         try:
             with sqlite3.connect(DB_FILE) as conn:
                 cursor = conn.cursor()
+                conn.execute('BEGIN')
+
                 cursor.execute(
-                    """INSERT INTO alias (device_name, alias)
-                    VALUES (?, ?)
-                    ON CONFLICT(device_name) DO UPDATE SET alias = ?;""",
-                    (device_name, alias, alias),
+                    "INSERT INTO alias (device_name, alias) VALUES (?, ?);",
+                    (device_name, alias)
                 )
+
+                cursor.execute(
+                    "UPDATE alias SET alias = ? WHERE device_name = ?;",
+                    (alias, device_name)
+                )
+
                 conn.commit()
         except sqlite3.Error as e:
             return jsonify({"message": "Database error: {}".format(e)}), 500

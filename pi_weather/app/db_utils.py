@@ -56,7 +56,6 @@ def create_alias_table():
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS alias (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 device_name TEXT,
                 alias TEXT
             );

@@ -3,3 +3,4 @@ black
 mdformat
 pytest
 requests
+python-dotenv

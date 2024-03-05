@@ -66,3 +66,23 @@ def test_application_runs(get_ip_address):
     assert response.status_code == 200, f"Get request failed"
     data = response.json()
     assert len(data) == n_data_points, "Incorrect number of data points returned"
+
+
+def test_alias(get_ip_address):
+    ip_address = get_ip_address
+    device_name = "test_device"
+    alias = "test_alias"
+    data = {"device_name": device_name, "alias": alias}
+    
+    response = requests.post(
+        f"http://{ip_address}:5000/v1/alias", json=data
+    )
+    assert response.status_code == 200, "Post request failed"
+
+    response = requests.get(f"http://{ip_address}:5000/v1/alias?device_name={device_name}")
+    assert response.status_code == 200, "Get request failed"
+    data = response.json()
+    assert data[device_name] == alias, "Alias not set correctly"
+
+    response = requests.delete(f"http://{ip_address}:5000/v1/alias?device_name={device_name}")
+    assert response.status_code == 200, "Delete request failed"
