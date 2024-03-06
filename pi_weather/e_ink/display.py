@@ -44,5 +44,8 @@ for i, device_name in enumerate(data):
     delta_minutes = int(delta_seconds / 60)
     text = f"{device_alias}: {data[device_name]['temperature']:.1f} C ({delta_minutes}m ago)"
     draw.text((x, y + i * y_delta), text, font=font20, fill=0)
+
+image.rotate(180)
+
 epd.display(epd.getbuffer(image))
 epd.sleep()
