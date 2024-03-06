@@ -73,16 +73,18 @@ def test_alias(get_ip_address):
     device_name = "test_device"
     alias = "test_alias"
     data = {"device_name": device_name, "alias": alias}
-    
-    response = requests.post(
-        f"http://{ip_address}:5000/v1/alias", json=data
-    )
+
+    response = requests.post(f"http://{ip_address}:5000/v1/alias", json=data)
     assert response.status_code == 200, "Post request failed"
 
-    response = requests.get(f"http://{ip_address}:5000/v1/alias?device_name={device_name}")
+    response = requests.get(
+        f"http://{ip_address}:5000/v1/alias?device_name={device_name}"
+    )
     assert response.status_code == 200, "Get request failed"
     data = response.json()
     assert data[device_name] == alias, "Alias not set correctly"
 
-    response = requests.delete(f"http://{ip_address}:5000/v1/alias?device_name={device_name}")
+    response = requests.delete(
+        f"http://{ip_address}:5000/v1/alias?device_name={device_name}"
+    )
     assert response.status_code == 200, "Delete request failed"
