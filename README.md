@@ -5,8 +5,6 @@ This is a simple weather station that uses a Raspberry Pi and a BMP280 sensor to
 To do:
 
 - sensor retry
-- e-ink display
-- sample data, avoid artifacts
 
 ## Installation - Server
 
@@ -41,4 +39,11 @@ curl -X POST -H "Content-Type: application/json" -d '{
 
 ```bash
 curl "http://172.17.0.2:5000/v1/data_point/last_day?device_name=your_device_name"
+```
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{
+    "device_name": "toto device",
+    "alias": "toto alias"
+    }' http://172.17.0.2:5000/v1/alias
 ```
