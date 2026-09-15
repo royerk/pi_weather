@@ -32,12 +32,14 @@ imported and unit tested without pulling in PIL or the EPD driver:
 
 ```
 status_data.py (new, stdlib only — no PIL/EPD import)
-  ├─ read_cpu_temp()      -> float | None
-  ├─ read_uptime()        -> str | None
-  └─ read_docker_status() -> list[str] | None
+  ├─ read_cpu_temp()          -> float | None
+  ├─ read_uptime()            -> str | None
+  ├─ read_docker_status()     -> list[str] | None
+  ├─ should_do_full_refresh(state_file, now) -> bool
+  └─ record_full_refresh(state_file, now)    -> None
 
 status.py (new, cron entry point — mirrors display.py's structure)
-  imports the three read_* functions from status_data
+  imports the five functions above from status_data
   + PIL/EPD imports and draw/display logic at module scope,
     same top-level-script convention as display.py (no `if __name__` guard)
 ```
@@ -86,16 +88,70 @@ enough to notice "it's running but broken." Listing is not scoped to a
 specific container name, so it naturally picks up whatever's running on
 the host without a hardcoded list.
 
+## Refresh strategy: partial on every run, full once a day
+
+The panel supports both a full refresh (`epd.display()` /
+`epd.displayPartBaseImage()`, flashes the whole screen, slow, but resets
+image quality) and a partial refresh (`epd.displayPartial()`, fast, no
+flash, but accumulates ghosting over repeated use since it only diffs
+against the previous image). Every 5-minute run does a partial refresh;
+once a day, a run instead does a full refresh to clear accumulated
+ghosting and re-establish a clean baseline.
+
+Because `status.py` is a fresh process every cron run (no long-lived
+daemon — see Non-goals), there's no in-memory way to know "have I done
+today's full refresh yet." `should_do_full_refresh(state_file, now)` and
+`record_full_refresh(state_file, now)` solve this with a one-line state
+file (path e.g. `/tmp/pi_weather_eink_last_full_refresh`) holding the
+ISO date of the last full refresh:
+
+- `should_do_full_refresh` returns `True` if the file is missing, empty,
+  unreadable, or its content doesn't equal `now.date().isoformat()`.
+- `record_full_refresh` (only called after a successful full refresh)
+  writes `now.date().isoformat()` to the file, overwriting it.
+
+The existing cron schedule (`2-59/5 * * * *`) never fires exactly at
+`00:00`, so this isn't a literal midnight check — in practice the first
+run after midnight is the one at `00:02`, which is when the date rolls
+over and triggers the full refresh. No crontab change needed; both paths
+run from the same cron line, decided at runtime.
+
+Using `/tmp` (tmpfs, cleared on reboot) is deliberate: it also forces a
+full refresh on the first run after any reboot or redeploy, for free,
+without a separate "is this a cold start" check — a fresh baseline is
+exactly what you want after a restart anyway.
+
+**Open risk, needs hardware validation:** partial refresh assumes the
+panel's own internal "previous image" RAM survives between runs. Deep
+sleep mode 1 (`epd.sleep()` already sends `0x10`/`0x01`, unchanged by
+this spec) is documented to retain RAM, so this should hold — but
+`display.py`, the only precedent in this codebase, only ever does full
+refreshes, so there's no existing example here of partial refresh
+surviving a process restart (`epd.init()`'s hardware reset, done fresh
+every cron run). Verify by watching the panel over a few partial-refresh
+cycles after deploying: if ghosting or corruption creeps in instead of
+staying clean, the fallback is to drop the partial path and do a full
+refresh every run (removing the state-file logic, not the daily-cadence
+idea), or move off one-shot cron to a long-lived process — worth doing
+only if the simple approach demonstrably fails.
+
 ## Rendering
 
 Same pattern as `display.py`: monochrome PIL image
 (`Image.new("1", (epd.height, epd.width), 255)`), `font20`
 (`Font.ttc`, size 20), drawn top to bottom with a 25px line height,
 rotated 180° before display (matching the panel's current mounting
-orientation), then `epd.display(epd.getbuffer(image))` followed by
-`epd.sleep()`.
+orientation).
 
-Layout (x=5, y starts at 5, y_delta=25):
+- **Full refresh path**: `epd.init()` → `epd.Clear(0xFF)` → draw →
+  `epd.displayPartBaseImage(epd.getbuffer(image))` (seeds both the
+  current *and* "previous" RAM banks the panel needs for clean partial
+  diffing — not `epd.display()`, which only writes the current bank) →
+  `record_full_refresh(...)` → `epd.sleep()`.
+- **Partial refresh path**: `epd.init()` → draw (no `Clear()` call) →
+  `epd.displayPartial(epd.getbuffer(image))` → `epd.sleep()`.
+
+Layout is identical either way (x=5, y starts at 5, y_delta=25):
 
 1. Timestamp — `current_date.strftime("%b %d, %H:%M")`
 2. CPU temp — `f"CPU: {temp:.1f} C"`, or `"CPU: n/a"` if unavailable
@@ -124,6 +180,13 @@ solved here (YAGNI for a homelab with one container).
 - The EPD init/display/sleep calls themselves are not wrapped in
   additional error handling beyond what `display.py` already does today —
   out of scope for this change.
+- A failed *read* of the state file (missing, empty, unreadable) is
+  treated as "do a full refresh" (see Refresh strategy) rather than an
+  error — the safe default. A failed *write* after a full refresh is
+  logged/ignored, not fatal — it just means tomorrow's run also does a
+  full refresh, which is safe, only slightly wasteful.
+
+## Deployment
 
 - `deploy-e-ink` Makefile target references `-m pi_weather.e_ink.display`
   twice in its recipe — an initial one-shot smoke run right after the venv
@@ -138,10 +201,15 @@ solved here (YAGNI for a homelab with one container).
 
 ## Testing
 
-- Unit tests for `status_data.read_cpu_temp`, `read_uptime`, and
-  `read_docker_status`, each covering the success path and the "source
-  unavailable" path (mocking the filesystem read / `subprocess.run`).
-  Because `status_data.py` has no PIL/EPD import (see Architecture), these
+- Unit tests for `status_data.read_cpu_temp`, `read_uptime`,
+  `read_docker_status`, `should_do_full_refresh`, and
+  `record_full_refresh`, each covering the success path and the "source
+  unavailable"/edge-case path (mocking the filesystem read /
+  `subprocess.run`; the refresh-decision functions can use a real temp
+  file via `tmp_path` rather than mocking, since they're plain file I/O).
+  Cases worth covering for `should_do_full_refresh`: missing file, empty
+  file, file with today's date, file with a different date. Because
+  `status_data.py` has no PIL/EPD import (see Architecture), these
   run under the project's existing `make test` / `requirements-dev.txt`
   venv exactly like `pi_weather/app/test_app.py` does today — no new test
   dependencies, no hardware, no Docker daemon required. Note this is a
