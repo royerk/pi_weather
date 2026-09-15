@@ -126,3 +126,5 @@ cython_debug/
 
 *venv*
 .last_*
+
+.DS_Store
