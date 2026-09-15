@@ -1,10 +1,13 @@
 import subprocess
+from datetime import datetime
 from unittest.mock import patch
 
 from pi_weather.e_ink.status_data import (
     read_cpu_temp,
     read_docker_status,
     read_uptime,
+    record_full_refresh,
+    should_do_full_refresh,
 )
 
 
@@ -100,3 +103,53 @@ def test_read_docker_status_returns_none_on_nonzero_exit(mock_run):
     )
 
     assert read_docker_status() is None
+
+
+def test_should_do_full_refresh_when_state_file_missing(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    now = datetime(2026, 9, 15, 0, 2)
+
+    assert should_do_full_refresh(str(state_file), now) is True
+
+
+def test_should_do_full_refresh_when_state_file_empty(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    state_file.write_text("")
+    now = datetime(2026, 9, 15, 0, 2)
+
+    assert should_do_full_refresh(str(state_file), now) is True
+
+
+def test_should_not_do_full_refresh_when_already_done_today(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    state_file.write_text("2026-09-15")
+    now = datetime(2026, 9, 15, 12, 30)
+
+    assert should_do_full_refresh(str(state_file), now) is False
+
+
+def test_should_do_full_refresh_when_state_file_has_different_date(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    state_file.write_text("2026-09-14")
+    now = datetime(2026, 9, 15, 0, 2)
+
+    assert should_do_full_refresh(str(state_file), now) is True
+
+
+def test_record_full_refresh_writes_todays_date(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    now = datetime(2026, 9, 15, 0, 2)
+
+    record_full_refresh(str(state_file), now)
+
+    assert state_file.read_text() == "2026-09-15"
+
+
+def test_record_full_refresh_overwrites_existing_content(tmp_path):
+    state_file = tmp_path / "last_full_refresh"
+    state_file.write_text("2026-09-14")
+    now = datetime(2026, 9, 15, 0, 2)
+
+    record_full_refresh(str(state_file), now)
+
+    assert state_file.read_text() == "2026-09-15"

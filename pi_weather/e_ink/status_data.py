@@ -50,3 +50,20 @@ def read_docker_status():
         return None
 
     return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def should_do_full_refresh(state_file, now):
+    try:
+        with open(state_file) as f:
+            last = f.read().strip()
+    except OSError:
+        return True
+    return last != now.date().isoformat()
+
+
+def record_full_refresh(state_file, now):
+    try:
+        with open(state_file, "w") as f:
+            f.write(now.date().isoformat())
+    except OSError:
+        pass
