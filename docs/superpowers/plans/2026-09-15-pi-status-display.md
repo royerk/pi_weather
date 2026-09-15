@@ -351,7 +351,6 @@ Create `pi_weather/e_ink/status.py`:
 
 ```python
 import os
-import time
 from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
@@ -541,14 +540,13 @@ Summarize what the panel showed after the observation window (clean partial upda
 
 - [ ] **Step 5: Merge into `main` and push, now that hardware validation passed**
 
-Deploying (Step 2) intentionally didn't touch `main` — this step folds the validated branch back into the permanent history. From the main `pi_weather` checkout at `/Users/kevin/workspace/pi_weather` (not this worktree): the `web` branch there has unrelated uncommitted changes (`app.py`, `generate_local_fake_data.sh`) that must stay untouched, so don't `git checkout main` from that same working tree while those are dirty. Instead:
+Deploying (Step 2) intentionally didn't touch `main` — this step folds the validated branch back into the permanent history. `/Users/kevin/workspace/pi_weather` (branch `web`, with unrelated uncommitted changes to `app.py`/`generate_local_fake_data.sh`) and this worktree share one underlying repo (`git rev-parse --git-common-dir` resolves to the same `.git` from both) — so `add-pi-status-display` is already a valid ref from either location; there's nothing to fetch between them, and attempting to (`git fetch <other-worktree-path> branch:branch`) fails with "refusing to fetch into branch ... checked out at ...". Push straight from this worktree instead, then merge via a fresh worktree so `web`'s dirty working tree is never touched:
 
 ```bash
-cd /Users/kevin/workspace/pi_weather
-git fetch /Users/kevin/workspace/pi_weather-status add-pi-status-display:add-pi-status-display
+cd /Users/kevin/workspace/pi_weather-status
 git push origin add-pi-status-display
 ```
-This creates a local `main`-independent branch ref from the worktree's commits and pushes it to `origin` without touching the currently-checked-out `web` branch's working tree. Then merge on GitHub (open a PR and merge, or if you prefer a direct merge):
+Then merge on GitHub (open a PR and merge, or if you prefer a direct merge):
 ```bash
 git fetch origin main
 git worktree add ../pi_weather-main main
@@ -558,4 +556,4 @@ git push origin main
 cd ..
 git worktree remove pi_weather-main
 ```
-Expected: `origin/main` now includes the status-display commits; `git log --oneline -1 origin/main` shows the "Merge into main..." point or a fast-forwarded tip matching the branch's last commit.
+Expected: `origin/main` now includes the status-display commits; `git log --oneline -1 origin/main` shows a fast-forwarded tip matching the branch's last commit.
