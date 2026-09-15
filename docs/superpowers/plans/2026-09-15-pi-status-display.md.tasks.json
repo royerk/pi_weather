@@ -5,9 +5,9 @@
     {"id": 1, "subject": "Task 2: status_data.py - Docker container status", "status": "completed", "blockedBy": [0]},
     {"id": 2, "subject": "Task 3: status_data.py - full/partial refresh decision", "status": "completed", "blockedBy": [1]},
     {"id": 3, "subject": "Task 4: status.py - the cron entry point that draws the panel", "status": "completed", "blockedBy": [2]},
-    {"id": 4, "subject": "Task 5: Update deploy-e-ink Makefile target", "status": "pending", "blockedBy": [3]},
+    {"id": 4, "subject": "Task 5: Update deploy-e-ink Makefile target", "status": "completed", "blockedBy": [3]},
     {"id": 5, "subject": "Task 6: Full verification pass (tests + lint)", "status": "pending", "blockedBy": [4]},
     {"id": 6, "subject": "Task 7: Deploy to the Pi and verify on real hardware", "status": "pending", "blockedBy": [5]}
   ],
-  "lastUpdated": "2026-09-15T02:00:00-07:00"
+  "lastUpdated": "2026-09-15T02:15:00-07:00"
 }
