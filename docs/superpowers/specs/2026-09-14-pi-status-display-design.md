@@ -147,9 +147,18 @@ orientation).
   `epd.displayPartBaseImage(epd.getbuffer(image))` (seeds both the
   current *and* "previous" RAM banks the panel needs for clean partial
   diffing — not `epd.display()`, which only writes the current bank) →
-  `record_full_refresh(...)` → `epd.sleep()`.
+  `record_full_refresh(...)` → `epd.sleep()`. Deliberately skips the
+  `time.sleep(2)` that `display.py` does after `Clear()` — not an
+  oversight; `TurnOnDisplay()` already blocks on `ReadBusy()`, so the
+  extra sleep isn't needed for correctness.
 - **Partial refresh path**: `epd.init()` → draw (no `Clear()` call) →
   `epd.displayPartial(epd.getbuffer(image))` → `epd.sleep()`.
+
+A single `now = datetime.now()` is captured once per run and reused for
+both the rendered timestamp line and the `should_do_full_refresh`/
+`record_full_refresh` calls, rather than calling `datetime.now()`
+separately for each — avoids (an admittedly unlikely, given the 5-minute
+cadence) inconsistency if the two calls straddled a date boundary.
 
 Layout is identical either way (x=5, y starts at 5, y_delta=25):
 
