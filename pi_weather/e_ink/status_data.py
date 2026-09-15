@@ -35,3 +35,18 @@ def read_uptime(path="/proc/uptime"):
     if hours > 0:
         return f"{hours}h {minutes}m"
     return f"{minutes}m"
+
+
+def read_docker_status():
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-a", "--format", "{{.Names}}: {{.Status}}"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+
+    return [line for line in result.stdout.splitlines() if line.strip()]
