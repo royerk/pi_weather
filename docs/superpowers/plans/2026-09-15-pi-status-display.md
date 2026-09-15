@@ -10,14 +10,16 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-14-pi-status-display-design.md`
 
----
+______________________________________________________________________
 
 ## Chunk 1: status_data.py, status.py, Makefile, and rollout
 
 ### Task 1: `status_data.py` — CPU temperature and uptime
 
 **Files:**
+
 - Create: `pi_weather/e_ink/status_data.py`
+
 - Test: `pi_weather/e_ink/test_status_data.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -139,12 +141,14 @@ git add pi_weather/e_ink/status_data.py pi_weather/e_ink/test_status_data.py
 git commit -m "Add CPU temp and uptime readers for e-ink status display"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: `status_data.py` — Docker container status
 
 **Files:**
+
 - Modify: `pi_weather/e_ink/status_data.py`
+
 - Modify: `pi_weather/e_ink/test_status_data.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -234,12 +238,14 @@ git add pi_weather/e_ink/status_data.py pi_weather/e_ink/test_status_data.py
 git commit -m "Add Docker container status reader for e-ink status display"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: `status_data.py` — full/partial refresh decision
 
 **Files:**
+
 - Modify: `pi_weather/e_ink/status_data.py`
+
 - Modify: `pi_weather/e_ink/test_status_data.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -336,11 +342,12 @@ git add pi_weather/e_ink/status_data.py pi_weather/e_ink/test_status_data.py
 git commit -m "Add full/partial refresh state tracking for e-ink status display"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: `status.py` — the cron entry point that draws the panel
 
 **Files:**
+
 - Create: `pi_weather/e_ink/status.py`
 
 No automated test for this file (matches `display.py`'s existing precedent and the spec's Testing section) — importing it requires the EPD driver, which only loads on real hardware. Verification is a visual check on the physical panel in Task 7.
@@ -430,11 +437,12 @@ git add pi_weather/e_ink/status.py
 git commit -m "Add status.py e-ink entry point: renders and displays Pi status"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Update `deploy-e-ink` Makefile target
 
 **Files:**
+
 - Modify: `Makefile:256-274` (the `deploy-e-ink` target)
 
 - [ ] **Step 1: Update the two `display` references**
@@ -476,7 +484,7 @@ git add Makefile
 git commit -m "Point deploy-e-ink at status.py instead of display.py"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Full verification pass (tests + lint)
 
@@ -498,13 +506,16 @@ Expected: `isort`, `black`, and `mdformat` all report clean or auto-fix formatti
 git add -A
 git status
 ```
+
 If lint changed anything (check `git status` / `git diff --stat` first):
+
 ```bash
 git commit -m "Apply lint formatting"
 ```
+
 If lint changed nothing, skip this commit.
 
----
+______________________________________________________________________
 
 ### Task 7: Deploy to the Pi and verify on real hardware
 
@@ -515,7 +526,9 @@ This is the step where the spec's "Open risk, needs hardware validation" (cross-
 - [ ] **Step 1: Confirm deploy connectivity**
 
 The `deploy-e-ink` Makefile target needs `REMOTE_USER`, `REMOTE_HOST_E_INK`, and `REMOTE_PATH` set (normally via a gitignored `.env` in the repo root, loaded by the Makefile's `-include .env`). Neither this worktree nor the main `pi_weather` checkout on this machine currently has a `.env` file, and there's no matching entry in `~/.ssh/config` for the e-ink host. Before running the deploy:
+
 - If you have these values already (from how the existing weather deploy was set up), add a `.env` in the repo root with `REMOTE_USER=...`, `REMOTE_HOST_E_INK=...`, `REMOTE_PATH=...` (do not commit it — already covered by `.gitignore`'s `.env` entry).
+
 - Confirm this machine can actually reach that host. `.env` is read by Make (`-include .env`), not by the shell, so export it first: `set -a && source .env && set +a && ssh $REMOTE_USER@$REMOTE_HOST_E_INK echo ok`.
 
 - [ ] **Step 2: Deploy directly from this worktree**
@@ -525,13 +538,17 @@ The `deploy-e-ink` Makefile target needs `REMOTE_USER`, `REMOTE_HOST_E_INK`, and
 ```bash
 make update-e-ink
 ```
+
 Expected: final output is `Code deployed to remote e-ink successfully.` with no error lines above it.
 
 - [ ] **Step 3: Watch the panel over several cycles**
 
 Wait for at least 3-4 cron cycles (roughly 15-20 minutes, given the `2-59/5 * * * *` schedule) and look at the panel:
+
 - Confirm it now shows the timestamp/CPU/uptime/Docker status layout instead of weather.
+
 - Confirm each partial-refresh update looks clean (text changes without visible ghosting/corruption building up). If ghosting or corruption appears after a few cycles, see the spec's fallback (drop the partial-refresh path, always full refresh) — that would be a follow-up change, not part of this plan.
+
 - If possible, also observe one full-refresh cycle (the first run after local midnight, or force it by deleting `/tmp/pi_weather_eink_last_full_refresh` on the Pi via SSH and waiting for the next cron run) and confirm the screen does a full flash/clear rather than a silent partial update.
 
 - [ ] **Step 4: Report back**
@@ -546,7 +563,9 @@ Deploying (Step 2) intentionally didn't touch `main` — this step folds the val
 cd /Users/kevin/workspace/pi_weather-status
 git push origin add-pi-status-display
 ```
+
 Then merge on GitHub (open a PR and merge, or if you prefer a direct merge):
+
 ```bash
 git fetch origin main
 git worktree add ../pi_weather-main main
@@ -557,4 +576,5 @@ git push origin main
 cd /Users/kevin/workspace/pi_weather-status
 git worktree remove ../pi_weather-main
 ```
+
 Expected: `origin/main` now includes the status-display commits; `git log --oneline -1 origin/main` shows a fast-forwarded tip matching the branch's last commit.

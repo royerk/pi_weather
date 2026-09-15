@@ -48,8 +48,7 @@ This split exists because `pi_weather/e_ink/epdconfig.py` does hardware
 auto-detection at import time (instantiating a `RaspberryPi()` /
 `JetsonNano()` driver unconditionally at module bottom) — merely
 `import`ing `epd2in13_V4` (and therefore anything that imports it at
-module scope, like `display.py` today) raises `RuntimeError: Cannot find
-sysfs_software_spi.so` on a machine without that hardware. Putting the
+module scope, like `display.py` today) raises `RuntimeError: Cannot find sysfs_software_spi.so` on a machine without that hardware. Putting the
 `read_*` functions in their own module with no PIL/EPD import means tests
 can `from pi_weather.e_ink.status_data import read_cpu_temp, ...` on any
 machine, hardware or not.
@@ -163,9 +162,9 @@ cadence) inconsistency if the two calls straddled a date boundary.
 Layout is identical either way (x=5, y starts at 5, y_delta=25):
 
 1. Timestamp — `current_date.strftime("%b %d, %H:%M")`
-2. CPU temp — `f"CPU: {temp:.1f} C"`, or `"CPU: n/a"` if unavailable
-3. Uptime — `f"Up: {uptime_str}"`, or `"Up: n/a"` if unavailable
-4. One line per Docker container (name + status), each truncated to a
+1. CPU temp — `f"CPU: {temp:.1f} C"`, or `"CPU: n/a"` if unavailable
+1. Uptime — `f"Up: {uptime_str}"`, or `"Up: n/a"` if unavailable
+1. One line per Docker container (name + status), each truncated to a
    fixed character count (e.g. 30 chars, `text[:30]`) rather than measured
    pixel width — simplest option, and precise pixel-fit isn't worth the
    complexity for a single-container homelab — or a single `"docker: n/a"`

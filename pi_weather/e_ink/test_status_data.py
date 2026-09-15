@@ -68,9 +68,7 @@ def _fake_completed_process(stdout):
 
 @patch("pi_weather.e_ink.status_data.subprocess.run")
 def test_read_docker_status_parses_container_lines(mock_run):
-    mock_run.return_value = _fake_completed_process(
-        "kass-budget-bot: Up 2 hours\n"
-    )
+    mock_run.return_value = _fake_completed_process("kass-budget-bot: Up 2 hours\n")
 
     assert read_docker_status() == ["kass-budget-bot: Up 2 hours"]
 
@@ -98,9 +96,7 @@ def test_read_docker_status_returns_none_on_timeout(mock_run):
 
 @patch("pi_weather.e_ink.status_data.subprocess.run")
 def test_read_docker_status_returns_none_on_nonzero_exit(mock_run):
-    mock_run.side_effect = subprocess.CalledProcessError(
-        returncode=1, cmd="docker"
-    )
+    mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd="docker")
 
     assert read_docker_status() is None
 
