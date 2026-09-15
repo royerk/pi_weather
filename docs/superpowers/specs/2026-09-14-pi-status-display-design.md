@@ -27,25 +27,38 @@ entirely.
 
 ## Architecture
 
-New module `pi_weather/e_ink/status.py`, structured the same way as
-`display.py`: a top-level script (no `if __name__` guard needed, matching
-the existing convention) that gathers three independent pieces of data,
-renders them into one image, and pushes that image to the panel.
+Two modules, split specifically so the data-gathering logic can be
+imported and unit tested without pulling in PIL or the EPD driver:
 
 ```
-status.py
+status_data.py (new, stdlib only — no PIL/EPD import)
   ├─ read_cpu_temp()      -> float | None
   ├─ read_uptime()        -> str | None
-  ├─ read_docker_status() -> list[str] | None
-  └─ main draw/display logic (mirrors display.py's EPD init/draw/sleep)
+  └─ read_docker_status() -> list[str] | None
+
+status.py (new, cron entry point — mirrors display.py's structure)
+  imports the three read_* functions from status_data
+  + PIL/EPD imports and draw/display logic at module scope,
+    same top-level-script convention as display.py (no `if __name__` guard)
 ```
+
+This split exists because `pi_weather/e_ink/epdconfig.py` does hardware
+auto-detection at import time (instantiating a `RaspberryPi()` /
+`JetsonNano()` driver unconditionally at module bottom) — merely
+`import`ing `epd2in13_V4` (and therefore anything that imports it at
+module scope, like `display.py` today) raises `RuntimeError: Cannot find
+sysfs_software_spi.so` on a machine without that hardware. Putting the
+`read_*` functions in their own module with no PIL/EPD import means tests
+can `from pi_weather.e_ink.status_data import read_cpu_temp, ...` on any
+machine, hardware or not.
 
 Each `read_*` function is independently callable and returns `None` (or an
 empty result) on failure rather than raising, so a problem in one data
-source does't prevent the other two from rendering. This is what makes the
-per-line error handling below possible, and each function can be unit
-tested without hardware or Docker access by mocking the one thing it reads
-(a file path, or `subprocess.run`).
+source doesn't prevent the other two from rendering. This is what makes
+the per-line error handling below possible, and each function can be unit
+tested by mocking the one thing it reads (a file path, or
+`subprocess.run`) — no hardware, no Docker daemon, no new test
+dependencies (see Testing).
 
 ## Data collection
 
@@ -87,10 +100,12 @@ Layout (x=5, y starts at 5, y_delta=25):
 1. Timestamp — `current_date.strftime("%b %d, %H:%M")`
 2. CPU temp — `f"CPU: {temp:.1f} C"`, or `"CPU: n/a"` if unavailable
 3. Uptime — `f"Up: {uptime_str}"`, or `"Up: n/a"` if unavailable
-4. One line per Docker container (name + status, truncated to fit the
-   panel width if needed), or a single `"docker: n/a"` line if the
-   `docker` call failed entirely, or `"docker: none running"` if it
-   succeeded but returned zero containers.
+4. One line per Docker container (name + status), each truncated to a
+   fixed character count (e.g. 30 chars, `text[:30]`) rather than measured
+   pixel width — simplest option, and precise pixel-fit isn't worth the
+   complexity for a single-container homelab — or a single `"docker: n/a"`
+   line if the `docker` call failed entirely, or `"docker: none running"`
+   if it succeeded but returned zero containers.
 
 With a 122×250px panel and 20px font at 25px line height, roughly 4-5
 lines fit. This is fine for the current single-container setup; if the
@@ -110,25 +125,34 @@ solved here (YAGNI for a homelab with one container).
   additional error handling beyond what `display.py` already does today —
   out of scope for this change.
 
-## Deployment
-
-- `deploy-e-ink` Makefile target and its crontab line switch from
-  `-m pi_weather.e_ink.display` to `-m pi_weather.e_ink.status`. Same
-  venv (`venv-ink`), same `requirements-ink.txt` (no new dependencies —
-  `subprocess` and `os` are stdlib), same cadence
-  (`2-59/5 * * * *`, i.e. every 5 minutes).
+- `deploy-e-ink` Makefile target references `-m pi_weather.e_ink.display`
+  twice in its recipe — an initial one-shot smoke run right after the venv
+  is created, and the crontab line itself — both need to change to
+  `-m pi_weather.e_ink.status`. Same venv (`venv-ink`), same
+  `requirements-ink.txt` (no new dependencies — `status_data.py` is
+  stdlib-only, and `status.py` uses the PIL/EPD deps already listed
+  there), same cadence (`2-59/5 * * * *`, i.e. every 5 minutes).
 - `display.py` itself is left in place (not deleted) in case weather
   display is wanted again later or on a different panel; it's simply no
   longer what's cron'd on this device.
 
 ## Testing
 
-- Unit tests for `read_cpu_temp`, `read_uptime`, and `read_docker_status`,
-  each covering the success path and the "source unavailable" path
-  (mocking the filesystem read / `subprocess.run` — no real hardware or
-  Docker daemon needed), following the existing `pi_weather/app/test_app.py`
-  pattern for how this repo structures tests.
-- No test for the actual EPD drawing/display calls — `display.py` has none
-  either, and doing so would need real (or heavily mocked) hardware, which
-  isn't worth it for a one-shot cron script whose drawing logic is a
-  direct visual check (look at the panel after a deploy).
+- Unit tests for `status_data.read_cpu_temp`, `read_uptime`, and
+  `read_docker_status`, each covering the success path and the "source
+  unavailable" path (mocking the filesystem read / `subprocess.run`).
+  Because `status_data.py` has no PIL/EPD import (see Architecture), these
+  run under the project's existing `make test` / `requirements-dev.txt`
+  venv exactly like `pi_weather/app/test_app.py` does today — no new test
+  dependencies, no hardware, no Docker daemon required. Note this is a
+  different testing *style* than `test_app.py` (which exercises the Flask
+  app over HTTP against a real container) — it's a plain pytest module
+  with `unittest.mock.patch`/`mock_open`, since there's no existing
+  precedent in this repo for mocking a filesystem read or
+  `subprocess.run`; this spec introduces that pattern rather than
+  following one that already exists.
+- No test for `status.py` itself (the PIL/EPD drawing and display calls) —
+  same as `display.py`, which has none either — since that needs real (or
+  heavily mocked) hardware, which isn't worth it for a one-shot cron
+  script whose drawing logic is a direct visual check (look at the panel
+  after a deploy).
