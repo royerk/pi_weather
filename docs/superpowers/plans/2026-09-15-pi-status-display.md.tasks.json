@@ -1,7 +1,7 @@
 {
   "planPath": "docs/superpowers/plans/2026-09-15-pi-status-display.md",
   "tasks": [
-    {"id": 0, "subject": "Task 1: status_data.py - CPU temperature and uptime", "status": "pending"},
+    {"id": 0, "subject": "Task 1: status_data.py - CPU temperature and uptime", "status": "completed"},
     {"id": 1, "subject": "Task 2: status_data.py - Docker container status", "status": "pending", "blockedBy": [0]},
     {"id": 2, "subject": "Task 3: status_data.py - full/partial refresh decision", "status": "pending", "blockedBy": [1]},
     {"id": 3, "subject": "Task 4: status.py - the cron entry point that draws the panel", "status": "pending", "blockedBy": [2]},
@@ -9,5 +9,5 @@
     {"id": 5, "subject": "Task 6: Full verification pass (tests + lint)", "status": "pending", "blockedBy": [4]},
     {"id": 6, "subject": "Task 7: Deploy to the Pi and verify on real hardware", "status": "pending", "blockedBy": [5]}
   ],
-  "lastUpdated": "2026-09-15T00:00:00-07:00"
+  "lastUpdated": "2026-09-15T00:30:00-07:00"
 }
