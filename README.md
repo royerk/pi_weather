@@ -22,6 +22,34 @@ To do:
 - `make deploy-sensor-2`
 - `make clean-sensor-2`
 
+## Installation - E-ink
+
+The `deploy-e-ink`/`update-e-ink`/`remove-e-ink` Makefile targets assume a
+`.env`-configured `REMOTE_USER`/`REMOTE_HOST_E_INK`/`REMOTE_PATH` — that
+setup isn't in use on the current e-ink hardware. Deploying there is
+currently a manual SSH process instead:
+
+- SSH directly into the Pi, e.g. `ssh kevin@hermes.local` (mDNS `.local`
+  hostname — plain `hermes` won't resolve without it).
+- Enable SPI if it isn't already: `sudo raspi-config nonint do_spi 0`.
+  On Raspberry Pi OS / Debian trixie this took effect immediately
+  (`/dev/spidev0.0`/`spidev0.1` appeared right away) — no reboot needed.
+- Install system build dependencies (see
+  [pi_weather/e_ink/README.md](pi_weather/e_ink/README.md) for why each
+  one is needed): `sudo apt-get install -y python3-dev swig liblgpio-dev`.
+- Copy the code over (e.g. `git ls-files -z | tar -czf code.tar.gz --null -T -`
+  locally, `scp` it to the Pi, extract), then set up the venv:
+  ```bash
+  python3 -m venv venv-ink
+  source venv-ink/bin/activate
+  pip install -r requirements-ink.txt
+  ```
+- Run once to verify it works: `venv-ink/bin/python3 -m pi_weather.e_ink.status`
+- Add the cron job:
+  ```bash
+  (crontab -l 2>/dev/null; echo "2-59/5 * * * * cd ~/pi_weather && venv-ink/bin/python -m pi_weather.e_ink.status") | crontab -
+  ```
+
 ## Local Development
 
 - note: raspbian has `python3.9`, docker images use `python3.10`
