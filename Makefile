@@ -266,8 +266,8 @@ deploy-e-ink:
 		cd $(REMOTE_PATH)/pi-weather; \
 		python3 -m venv venv-ink; source venv-ink/bin/activate && pip install -r requirements-ink.txt; \
 		\
-		cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python3 -m pi_weather.e_ink.display; \
-		crontab -l | { cat; echo \"2-59/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python -m pi_weather.e_ink.display\"; } | crontab -"
+		cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python3 -m pi_weather.e_ink.status; \
+		crontab -l | { cat; echo \"2-59/5 * * * * cd $(REMOTE_PATH)/pi-weather && venv-ink/bin/python -m pi_weather.e_ink.status\"; } | crontab -"
 	@echo "Code deployed to remote e-ink successfully."
 
 	@touch .last_deploy_e_ink
