@@ -149,7 +149,7 @@ git commit -m "Add CPU temp and uptime readers for e-ink status display"
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `pi_weather/e_ink/test_status_data.py` (add `from unittest.mock import patch` to the top-level imports, alongside the existing `from pi_weather.e_ink.status_data import ...` — extend that import line to include `read_docker_status`):
+First, update `test_status_data.py`'s top-of-file imports: add `import subprocess` and `from unittest.mock import patch`, and extend the existing `from pi_weather.e_ink.status_data import read_cpu_temp, read_uptime` line to also include `read_docker_status`. Then append below the existing tests:
 
 ```python
 def _fake_completed_process(stdout):
@@ -195,12 +195,6 @@ def test_read_docker_status_returns_none_on_nonzero_exit(mock_run):
     )
 
     assert read_docker_status() is None
-```
-
-This also requires adding `import subprocess` to the top of the test file (needed for `subprocess.CompletedProcess`/`TimeoutExpired`/`CalledProcessError`), and updating the existing import line to:
-
-```python
-from pi_weather.e_ink.status_data import read_cpu_temp, read_docker_status, read_uptime
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -525,21 +519,14 @@ The `deploy-e-ink` Makefile target needs `REMOTE_USER`, `REMOTE_HOST_E_INK`, and
 - If you have these values already (from how the existing weather deploy was set up), add a `.env` in the repo root with `REMOTE_USER=...`, `REMOTE_HOST_E_INK=...`, `REMOTE_PATH=...` (do not commit it — already covered by `.gitignore`'s `.env` entry).
 - Confirm this machine can actually reach that host: `ssh $REMOTE_USER@$REMOTE_HOST_E_INK echo ok`.
 
-- [ ] **Step 2: Merge the feature branch and deploy**
+- [ ] **Step 2: Deploy directly from this worktree**
 
-From the main `pi_weather` checkout (not this worktree, since `update-e-ink` reads `.env`/state from the repo root you run `make` in):
+`add-pi-status-display` exists only locally in this worktree — it was never pushed to `origin` (`origin` only has `main` and `clean-up`). That's fine: `make-tar` (which `update-e-ink` depends on) just runs `git ls-files -z | tar -czf code.tar.gz` against whatever's currently checked out, so deploying doesn't require merging to `main` first. Add the `.env` from Step 1 to this worktree's repo root (`/Users/kevin/workspace/pi_weather-status/.env`), then, from that same directory:
 
 ```bash
-git fetch origin add-pi-status-display
-git log --oneline origin/main..origin/add-pi-status-display
-```
-Review the commits, then merge (fast-forward, since this branch never diverged in a conflicting way):
-```bash
-git checkout main
-git merge --ff-only origin/add-pi-status-display
 make update-e-ink
 ```
-Expected: `make update-e-ink`'s final output is `Code deployed to remote e-ink successfully.` with no error lines above it.
+Expected: final output is `Code deployed to remote e-ink successfully.` with no error lines above it.
 
 - [ ] **Step 3: Watch the panel over several cycles**
 
@@ -551,3 +538,24 @@ Wait for at least 3-4 cron cycles (roughly 15-20 minutes, given the `2-59/5 * * 
 - [ ] **Step 4: Report back**
 
 Summarize what the panel showed after the observation window (clean partial updates, or any ghosting/corruption observed) — this closes out the spec's open hardware-validation risk either way.
+
+- [ ] **Step 5: Merge into `main` and push, now that hardware validation passed**
+
+Deploying (Step 2) intentionally didn't touch `main` — this step folds the validated branch back into the permanent history. From the main `pi_weather` checkout at `/Users/kevin/workspace/pi_weather` (not this worktree): the `web` branch there has unrelated uncommitted changes (`app.py`, `generate_local_fake_data.sh`) that must stay untouched, so don't `git checkout main` from that same working tree while those are dirty. Instead:
+
+```bash
+cd /Users/kevin/workspace/pi_weather
+git fetch /Users/kevin/workspace/pi_weather-status add-pi-status-display:add-pi-status-display
+git push origin add-pi-status-display
+```
+This creates a local `main`-independent branch ref from the worktree's commits and pushes it to `origin` without touching the currently-checked-out `web` branch's working tree. Then merge on GitHub (open a PR and merge, or if you prefer a direct merge):
+```bash
+git fetch origin main
+git worktree add ../pi_weather-main main
+cd ../pi_weather-main
+git merge --ff-only add-pi-status-display
+git push origin main
+cd ..
+git worktree remove pi_weather-main
+```
+Expected: `origin/main` now includes the status-display commits; `git log --oneline -1 origin/main` shows the "Merge into main..." point or a fast-forwarded tip matching the branch's last commit.
