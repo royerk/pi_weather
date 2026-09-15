@@ -79,7 +79,7 @@ def test_read_uptime_returns_none_when_file_missing(tmp_path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd pi_weather-status && venv/bin/pytest pi_weather/e_ink/test_status_data.py -v`
+Run (from the worktree root): `venv/bin/pytest pi_weather/e_ink/test_status_data.py -v`
 (If `venv/` doesn't exist yet, run `make venv` first — see project `Makefile`.)
 Expected: FAIL — `ModuleNotFoundError: No module named 'pi_weather.e_ink.status_data'`
 
@@ -516,7 +516,7 @@ This is the step where the spec's "Open risk, needs hardware validation" (cross-
 
 The `deploy-e-ink` Makefile target needs `REMOTE_USER`, `REMOTE_HOST_E_INK`, and `REMOTE_PATH` set (normally via a gitignored `.env` in the repo root, loaded by the Makefile's `-include .env`). Neither this worktree nor the main `pi_weather` checkout on this machine currently has a `.env` file, and there's no matching entry in `~/.ssh/config` for the e-ink host. Before running the deploy:
 - If you have these values already (from how the existing weather deploy was set up), add a `.env` in the repo root with `REMOTE_USER=...`, `REMOTE_HOST_E_INK=...`, `REMOTE_PATH=...` (do not commit it — already covered by `.gitignore`'s `.env` entry).
-- Confirm this machine can actually reach that host: `ssh $REMOTE_USER@$REMOTE_HOST_E_INK echo ok`.
+- Confirm this machine can actually reach that host. `.env` is read by Make (`-include .env`), not by the shell, so export it first: `set -a && source .env && set +a && ssh $REMOTE_USER@$REMOTE_HOST_E_INK echo ok`.
 
 - [ ] **Step 2: Deploy directly from this worktree**
 
