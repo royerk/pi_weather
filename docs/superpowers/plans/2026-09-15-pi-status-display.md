@@ -551,9 +551,10 @@ Then merge on GitHub (open a PR and merge, or if you prefer a direct merge):
 git fetch origin main
 git worktree add ../pi_weather-main main
 cd ../pi_weather-main
+git merge --ff-only origin/main   # sanity check: local main isn't stale
 git merge --ff-only add-pi-status-display
 git push origin main
-cd ..
-git worktree remove pi_weather-main
+cd /Users/kevin/workspace/pi_weather-status
+git worktree remove ../pi_weather-main
 ```
 Expected: `origin/main` now includes the status-display commits; `git log --oneline -1 origin/main` shows a fast-forwarded tip matching the branch's last commit.
