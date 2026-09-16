@@ -14,8 +14,7 @@ On a Raspberry Pi OS / Debian trixie (aarch64) host that had SPI disabled
    version this took effect immediately (`/dev/spidev0.0`/`spidev0.1`
    appeared right away) — no reboot needed. It also uncomments
    `dtparam=spi=on` in `/boot/firmware/config.txt` so it survives a reboot.
-2. **System build dependencies**, needed before `pip install -r
-   requirements-ink.txt` will succeed — `RPi.GPIO`, `spidev`, and `lgpio`
+1. **System build dependencies**, needed before `pip install -r requirements-ink.txt` will succeed — `RPi.GPIO`, `spidev`, and `lgpio`
    are all C extensions built from source on install:
    ```bash
    sudo apt-get install -y python3-dev swig liblgpio-dev
@@ -25,7 +24,7 @@ On a Raspberry Pi OS / Debian trixie (aarch64) host that had SPI disabled
    `lgpio` fails at `swig -python -o lgpio_wrap.c lgpio.i`. Without
    `liblgpio-dev`, `lgpio` builds but fails to link
    (`cannot find -llgpio`).
-3. **`lgpio` is required, not optional**, despite not being in the original
+1. **`lgpio` is required, not optional**, despite not being in the original
    `requirements-ink.txt` — without it, `gpiozero` (used by `epdconfig.py`
    for the BUSY pin) falls back to legacy `RPi.GPIO` edge detection, which
    fails on this kernel with `RuntimeError: Failed to add edge detection`.

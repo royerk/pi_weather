@@ -1,9 +1,10 @@
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from pi_weather.e_ink.status_data import (
     read_cpu_temp,
+    read_docker_container_uptime,
     read_docker_status,
     read_uptime,
     record_full_refresh,
@@ -99,6 +100,43 @@ def test_read_docker_status_returns_none_on_nonzero_exit(mock_run):
     mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd="docker")
 
     assert read_docker_status() is None
+
+
+@patch("pi_weather.e_ink.status_data.subprocess.run")
+def test_read_docker_container_uptime_formats_days_and_hours(mock_run):
+    mock_run.return_value = _fake_completed_process("2026-09-12T04:38:44.123456789Z\n")
+    now = datetime(2026, 9, 15, 8, 38, 44, tzinfo=timezone.utc)
+
+    assert read_docker_container_uptime("kass-budget-bot", now=now) == "3d 4h"
+
+
+@patch("pi_weather.e_ink.status_data.subprocess.run")
+def test_read_docker_container_uptime_formats_minutes_under_an_hour(mock_run):
+    mock_run.return_value = _fake_completed_process("2026-09-15T08:30:00Z\n")
+    now = datetime(2026, 9, 15, 8, 38, 44, tzinfo=timezone.utc)
+
+    assert read_docker_container_uptime("kass-budget-bot", now=now) == "8m"
+
+
+@patch("pi_weather.e_ink.status_data.subprocess.run")
+def test_read_docker_container_uptime_returns_none_on_unparseable_timestamp(mock_run):
+    mock_run.return_value = _fake_completed_process("not-a-timestamp\n")
+
+    assert read_docker_container_uptime("kass-budget-bot") is None
+
+
+@patch("pi_weather.e_ink.status_data.subprocess.run")
+def test_read_docker_container_uptime_returns_none_when_container_missing(mock_run):
+    mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd="docker")
+
+    assert read_docker_container_uptime("does-not-exist") is None
+
+
+@patch("pi_weather.e_ink.status_data.subprocess.run")
+def test_read_docker_container_uptime_returns_none_on_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd="docker", timeout=5)
+
+    assert read_docker_container_uptime("kass-budget-bot") is None
 
 
 def test_should_do_full_refresh_when_state_file_missing(tmp_path):

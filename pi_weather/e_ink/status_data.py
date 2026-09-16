@@ -6,7 +6,21 @@ Architecture section) so this module can be imported and unit tested on
 any machine, with or without e-ink hardware attached.
 """
 
+import re
 import subprocess
+from datetime import datetime, timezone
+
+
+def _format_duration(seconds):
+    days, remainder = divmod(int(seconds), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+
+    if days > 0:
+        return f"{days}d {hours}h"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
 
 
 def read_cpu_temp(path="/sys/class/thermal/thermal_zone0/temp"):
@@ -26,15 +40,7 @@ def read_uptime(path="/proc/uptime"):
     except (OSError, ValueError, IndexError):
         return None
 
-    days, remainder = divmod(int(seconds), 86400)
-    hours, remainder = divmod(remainder, 3600)
-    minutes, _ = divmod(remainder, 60)
-
-    if days > 0:
-        return f"{days}d {hours}h"
-    if hours > 0:
-        return f"{hours}h {minutes}m"
-    return f"{minutes}m"
+    return _format_duration(seconds)
 
 
 def read_docker_status():
@@ -50,6 +56,33 @@ def read_docker_status():
         return None
 
     return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def read_docker_container_uptime(container_name, now=None):
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.StartedAt}}", container_name],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+
+    raw = re.sub(r"\.\d+", "", result.stdout.strip()).replace("Z", "+00:00")
+    try:
+        started_at = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+
+    if now is None:
+        now = datetime.now(timezone.utc)
+    seconds = (now - started_at).total_seconds()
+    if seconds < 0:
+        return None
+
+    return _format_duration(seconds)
 
 
 def should_do_full_refresh(state_file, now):

@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pi_weather.e_ink.epd2in13_V4 import EPD
 from pi_weather.e_ink.status_data import (
     read_cpu_temp,
+    read_docker_container_uptime,
     read_docker_status,
     read_uptime,
     record_full_refresh,
@@ -14,6 +15,7 @@ from pi_weather.e_ink.status_data import (
 
 STATE_FILE = "/tmp/pi_weather_eink_last_full_refresh"
 DOCKER_LINE_MAX_CHARS = 30
+CONTAINER_LABELS = {"kass-budget-bot": "Kass"}
 
 font20 = ImageFont.truetype(os.path.join(os.path.dirname(__file__), "Font.ttc"), 20)
 
@@ -50,7 +52,17 @@ if containers is None:
 elif len(containers) == 0:
     docker_lines = ["docker: none running"]
 else:
-    docker_lines = [line[:DOCKER_LINE_MAX_CHARS] for line in containers]
+    docker_lines = []
+    for line in containers:
+        name = line.split(":", 1)[0]
+        label = CONTAINER_LABELS.get(name, name)
+        container_uptime = read_docker_container_uptime(name)
+        if container_uptime is not None:
+            docker_lines.append(
+                f"{label} uptime: {container_uptime}"[:DOCKER_LINE_MAX_CHARS]
+            )
+        else:
+            docker_lines.append(line[:DOCKER_LINE_MAX_CHARS])
 
 for i, line in enumerate(docker_lines):
     draw.text((x, y + i * y_delta), line, font=font20, fill=0)
